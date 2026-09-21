@@ -1,0 +1,10 @@
+# Runtime dependencies (also declared in pyproject.toml for uv).
+# Install with:  uv pip install -r requirements.txt   (or: pip install -r requirements.txt)
+mcp>=1.20,<2
+python-dotenv>=1.0
+httpx>=0.27
+numpy>=1.26
+pypdf>=4.0
+python-pptx>=1.0
+# Development / exploit demos
+pytest>=8

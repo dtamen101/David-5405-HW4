@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "study-graph": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "C:\\Users\\david\\Documents\\claudefiles\\study-graph-mcp",
+        "run",
+        "study-graph-mcp"
+      ]
+    }
+  }
+}

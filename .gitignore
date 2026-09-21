@@ -1,0 +1,19 @@
+# Secrets
+.env
+# Virtual environment
+.venv/
+# Runtime data and logs
+data/
+logs/
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+# Editors / OS
+.vscode/*
+!.vscode/settings.json
+.DS_Store
+Thumbs.db

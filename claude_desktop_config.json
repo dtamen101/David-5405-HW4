@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "study-graph": {
+      "command": "C:\\Users\\david\\Documents\\claudefiles\\study-graph-mcp\\.venv\\Scripts\\python.exe",
+      "args": ["-m", "study_graph"],
+      "env": {
+        "PYTHONPATH": "C:\\Users\\david\\Documents\\claudefiles\\study-graph-mcp\\src"
+      }
+    }
+  }
+}
