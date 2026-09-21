@@ -24,6 +24,7 @@ logger = logging.getLogger("study_graph")
 MAX_TITLE = 200
 MAX_BODY = 20_000
 MAX_QUERY = 500
+MAX_NOTE_ID = 2**63 - 1  # largest integer SQLite can store
 TAG_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 _\-]{0,39}$")
 SIMILAR_LINKS_PER_NOTE = 3
 
@@ -218,6 +219,14 @@ class KnowledgeBase:
         if note is None:
             raise NotFoundError(f"Note {note_id} does not exist.")
         return note
+
+    @staticmethod
+    def parse_note_id(raw: str) -> int:
+        """Validate a note id taken from a resource URI (always a string)."""
+        raw = (raw or "").strip()
+        if not raw.isdigit() or not 1 <= int(raw) <= MAX_NOTE_ID:
+            raise InvalidInputError("The note id must be a positive whole number, e.g. notes://note/12.")
+        return int(raw)
 
     def note_markdown(self, note_id: int) -> str:
         note = self.get_note(note_id)

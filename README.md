@@ -69,7 +69,7 @@ npx @modelcontextprotocol/inspector .venv\Scripts\python.exe -m study_graph
 # Or just start it (it waits silently for a client on stdin/stdout; Ctrl+C to stop)
 python -m study_graph
 
-# Unit + end-to-end tests (33 tests)
+# Unit + end-to-end tests (43 tests)
 pytest -q
 ```
 
@@ -106,7 +106,16 @@ Why: an LLM agent can loop, and a prompt-injected reading ("search for every wor
 can turn one request into hundreds of API calls.
 
 ### 2. Error disclosure
-Every tool and resource is wrapped by `safe_endpoint` (`security.py`):
+Two layers in `security.py`, so no error path reaches the client unfiltered:
+
+**Layer 1: at the protocol boundary (`SafeFastMCP`).** FastMCP checks tool arguments *before* our code
+runs, and by default sends the raw validation error to the client: the library name, the internal model name,
+the rejected input and a documentation URL. `SafeFastMCP` subclasses `FastMCP` and replaces those messages with
+a short summary that names the field but never echoes the input, e.g.
+`Invalid arguments for 'explore_graph': 'note_id' must be a whole number.` It also cleans up resource errors
+(`notes://note/abc`, unknown URIs).
+
+**Layer 2: every tool and resource body is wrapped by `safe_endpoint`:**
 * **Expected errors** (`StudyGraphError`) carry two messages: a `public_message` written for the user, and an
   internal `detail` (absolute path, parser error, upstream response) that only goes to the log.
 * **Unexpected errors** are logged with the full traceback, and the client only gets
@@ -115,8 +124,9 @@ Every tool and resource is wrapped by `safe_endpoint` (`security.py`):
 * **Logs are redacted**: a logging filter removes the API key and `key=`/`token=` values from messages *and* tracebacks.
 * **Resources never return absolute paths**, only file names relative to the sources folder.
 
-Without this layer, FastMCP returns `str(exception)` to the client, which leaks things like
-`Package not found at 'C:\Users\david\...\broken_slides.pptx'` or `Python int too large to convert to SQLite INTEGER`.
+Without these layers, FastMCP returns `str(exception)` to the client, which leaks things like
+`Package not found at 'C:\Users\david\...\broken_slides.pptx'`, `Python int too large to convert to SQLite INTEGER`,
+`file is not a database`, or a full pydantic validation dump with `https://errors.pydantic.dev/...`.
 
 Also included: path confinement (files can only be read from `SOURCES_DIR`; `..` and absolute paths are
 rejected) and parameterised SQL everywhere (a test stores `x'); DROP TABLE notes; --` as a plain title).
@@ -130,7 +140,7 @@ folders and never touch your notes.
 ```powershell
 cd exploits
 python demo_rate_limit.py          # floods 30 searches and 6 ingests
-python demo_error_disclosure.py    # corrupted files, SQLite overflow, path traversal
+python demo_error_disclosure.py    # 8 attacks: corrupted files, bad arguments, path traversal, corrupted DB
 python demo_error_disclosure.py --live-gemini   # + invalid API key against the real Gemini API
 ```
 
@@ -145,11 +155,20 @@ ATTACK 1: 30 rapid search_notes calls (search limit = 20/min)
 ATTACK 1: Corrupted slide deck (not a real .pptx)
    naive -> PackageNotFoundError: Package not found at 'C:\Users\...\sources\broken_slides.pptx'
 hardened -> Could not read 'broken_slides.pptx'. The file may be corrupted or password-protected.
+
+ATTACK 4: Wrong argument type (note_id='abc')
+   naive -> 1 validation error for explore_graphArguments ... input_value='abc' ... https://errors.pydantic.dev/...
+hardened -> Invalid arguments for 'explore_graph': 'note_id' must be a whole number.
+
+ATTACK 8: Corrupted database file (unexpected crash)
+   naive -> Error executing tool search_notes: file is not a database
+hardened -> An internal error occurred in 'search_notes'. The details were logged on the server (incident 8ee9dfe5).
 ```
 
 Doing it live in Claude Desktop: ask Claude to *"call search_notes 25 times in a row with the query 'test'"*
-(it gets blocked after 20), or to *"ingest ../../.env"* or *"explore note 1180591620717411303424"*
-(safe messages only).
+(it gets blocked after 20), or to *"ingest ../../.env"*, *"explore note 1180591620717411303424"*,
+*"call get_note with note_id -5"* or *"read the resource notes://note/abc"* (safe messages only).
+The corrupted-database case (incident id) is best shown with the exploit script, since it needs a damaged file.
 
 ## Project structure
 

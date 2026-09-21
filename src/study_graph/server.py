@@ -10,13 +10,12 @@ from __future__ import annotations
 import json
 from typing import Annotated
 
-from mcp.server.fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from .config import Settings, load_settings
-from .knowledge import KnowledgeBase
-from .security import RateLimiter, configure_logging, logger, safe_endpoint
+from .knowledge import MAX_NOTE_ID, KnowledgeBase
+from .security import RateLimiter, SafeFastMCP, configure_logging, logger, safe_endpoint
 
 INSTRUCTIONS = """\
 Study Graph turns a student's lecture slides and readings into a searchable
@@ -25,14 +24,15 @@ search_notes / explore_graph -> cite notes as [note N: file, slide M].
 Always cite note ids when answering from the notes."""
 
 
-def create_server(settings: Settings, kb: KnowledgeBase | None = None) -> FastMCP:
+def create_server(settings: Settings, kb: KnowledgeBase | None = None) -> SafeFastMCP:
     kb = kb or KnowledgeBase(settings)
     limiter = RateLimiter({
         "search": settings.search_per_minute,
         "write": settings.write_per_minute,
         "ingest": settings.ingest_per_minute,
     })
-    mcp = FastMCP("study-graph", instructions=INSTRUCTIONS)
+    # SafeFastMCP = FastMCP plus sanitised argument-validation errors (see security.py).
+    mcp = SafeFastMCP("study-graph", instructions=INSTRUCTIONS)
 
     # ------------------------------------------------------------------ tools
     @mcp.tool(annotations=ToolAnnotations(title="Ingest slides or reading", destructiveHint=False,
@@ -77,7 +77,7 @@ def create_server(settings: Settings, kb: KnowledgeBase | None = None) -> FastMC
     @mcp.tool(annotations=ToolAnnotations(title="Explore knowledge graph", readOnlyHint=True, openWorldHint=False))
     @safe_endpoint("explore_graph", limiter, "search")
     def explore_graph(
-        note_id: Annotated[int | None, Field(description="Start from this note id")] = None,
+        note_id: Annotated[int | None, Field(description="Start from this note id", ge=1, le=MAX_NOTE_ID)] = None,
         concept: Annotated[str | None, Field(description="Or start from a concept, e.g. 'supply chain'")] = None,
         limit: Annotated[int, Field(description="Max neighbours to return (1-30)", ge=1, le=30)] = 10,
     ) -> dict:
@@ -92,7 +92,7 @@ def create_server(settings: Settings, kb: KnowledgeBase | None = None) -> FastMC
     @mcp.tool(annotations=ToolAnnotations(title="Read full note", readOnlyHint=True, openWorldHint=False))
     @safe_endpoint("get_note", limiter, "search")
     def get_note(
-        note_id: Annotated[int, Field(description="Id of the note to read in full")],
+        note_id: Annotated[int, Field(description="Id of the note to read in full", ge=1, le=MAX_NOTE_ID)],
     ) -> str:
         """Return the complete text of one note with its citation and concepts.
 
@@ -116,8 +116,9 @@ def create_server(settings: Settings, kb: KnowledgeBase | None = None) -> FastMC
     @mcp.resource("notes://note/{note_id}", name="note", mime_type="text/markdown",
                   description="Full text of one note with its source citation and concepts.")
     @safe_endpoint("notes://note")
-    def note(note_id: int) -> str:
-        return kb.note_markdown(int(note_id))
+    def note(note_id: str) -> str:
+        # URI parameters arrive as text; parse them ourselves so bad ids get a friendly message.
+        return kb.note_markdown(kb.parse_note_id(note_id))
 
     # ---------------------------------------------------------------- prompts
     @mcp.prompt(title="Build a study guide")

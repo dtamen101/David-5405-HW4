@@ -7,8 +7,9 @@ Two protections live here:
    An LLM stuck in a loop (or a prompt-injected document telling it to
    "search 500 times") cannot exhaust the API quota or hammer the disk.
 
-2. **Error disclosure** - every tool and resource is wrapped by
-   :func:`safe_endpoint`. Expected problems raise a :class:`StudyGraphError`
+2. **Error disclosure** - two layers. :class:`SafeFastMCP` catches
+   argument-validation errors, which FastMCP raises *before* our code
+   runs. Every tool and resource body is then wrapped by :func:`safe_endpoint`. Expected problems raise a :class:`StudyGraphError`
    whose ``public_message`` was written for the user. Anything else is
    logged in full (with secrets redacted) to ``logs/server.log`` and the
    client only receives a generic message plus an incident id. Without
@@ -36,7 +37,9 @@ from pathlib import Path
 from typing import Any, TypeVar
 
 import anyio
-from mcp.server.fastmcp.exceptions import ToolError
+from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp.exceptions import ResourceError, ToolError
+from pydantic import ValidationError
 
 logger = logging.getLogger("study_graph")
 
@@ -227,3 +230,91 @@ def safe_endpoint(name: str, limiter: RateLimiter | None = None, bucket: str | N
         return wrapper  # type: ignore[return-value]
 
     return decorator
+
+
+# ---------------------------------------------------------------------------
+# Argument-validation errors (raised by FastMCP before safe_endpoint runs)
+# ---------------------------------------------------------------------------
+def _exception_chain(exc: BaseException):
+    """Yield exc and its causes, respecting ``raise ... from None``."""
+    seen: set[int] = set()
+    while exc is not None and id(exc) not in seen:
+        seen.add(id(exc))
+        yield exc
+        exc = exc.__cause__ or (None if exc.__suppress_context__ else exc.__context__)
+
+
+def _find(exc: BaseException, kind: type[BaseException]) -> BaseException | None:
+    return next((e for e in _exception_chain(exc) if isinstance(e, kind)), None)
+
+
+def describe_validation_error(error: ValidationError) -> str:
+    """Plain-English summary that names the field but never echoes the input,
+    the library, the internal model name or a documentation URL."""
+    problems = []
+    for item in error.errors()[:5]:
+        field = ".".join(str(part) for part in item.get("loc", ())) or "arguments"
+        kind = item.get("type", "")
+        ctx = item.get("ctx") or {}
+        if kind == "missing":
+            problem = "is required"
+        elif kind == "int_parsing_size":
+            problem = "is too large"
+        elif kind.startswith("int_") or kind.startswith("float_"):
+            problem = "must be a whole number"
+        elif kind.startswith("string_"):
+            problem = "must be text"
+        elif kind.startswith("list_"):
+            problem = "must be a list"
+        elif kind in ("less_than_equal", "less_than"):
+            problem = f"must be at most {ctx.get('le', ctx.get('lt'))}"
+        elif kind in ("greater_than_equal", "greater_than"):
+            problem = f"must be at least {ctx.get('ge', ctx.get('gt'))}"
+        else:
+            problem = "has an invalid value"
+        problems.append(f"'{field}' {problem}")
+    return "; ".join(problems) + "."
+
+
+class SafeFastMCP(FastMCP):
+    """FastMCP with the error-disclosure policy applied at the protocol boundary.
+
+    FastMCP validates tool arguments with pydantic *before* calling our
+    function, and on failure sends the raw pydantic message to the client
+    (library name, internal model name, the rejected input and a docs URL).
+    These overrides replace such messages with a short, safe summary.
+    Errors that already passed through :func:`safe_endpoint` are left alone.
+    """
+
+    async def call_tool(self, name: str, arguments: dict[str, Any]) -> Any:
+        try:
+            return await super().call_tool(name, arguments)
+        except ToolError as exc:
+            validation = _find(exc, ValidationError)
+            if validation is None:
+                raise
+            logger.info("%s rejected arguments: %s", name, validation)
+            raise ToolError(
+                f"Invalid arguments for '{name}': {describe_validation_error(validation)}"
+            ) from None
+
+    async def read_resource(self, uri: Any) -> Any:
+        try:
+            return await super().read_resource(uri)
+        except Exception as exc:
+            validation = _find(exc, ValidationError)
+            if validation is not None:
+                logger.info("resource %s rejected: %s", uri, validation)
+                raise ResourceError(f"Invalid resource address: {describe_validation_error(validation)}") from None
+            public = _find(exc, ToolError)  # already sanitised by safe_endpoint
+            if public is not None:
+                raise ResourceError(str(public)) from None
+            if str(exc).startswith("Unknown resource"):
+                raise ResourceError(
+                    "Unknown resource. Available: notes://sources, notes://graph, notes://note/{note_id}."
+                ) from None
+            incident = uuid.uuid4().hex[:8]
+            logger.exception("incident %s reading resource %s", incident, uri)
+            raise ResourceError(
+                f"An internal error occurred while reading the resource (incident {incident})."
+            ) from None
