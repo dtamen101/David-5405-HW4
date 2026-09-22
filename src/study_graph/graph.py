@@ -3,7 +3,10 @@
 Concepts are the most frequent meaningful words and two-word phrases in a
 note (title words count double). Notes that share a concept are connected
 through that concept; ``[[Note Title]]`` in a note body creates an explicit
-edge, the same convention Obsidian and Roam use.
+edge, the same convention Obsidian and Roam use (idea only: https://obsidian.md/help/links).
+The knowledge-graph idea (entities + relations exposed over MCP) was inspired by the
+reference ``memory`` server: https://github.com/modelcontextprotocol/servers/tree/main/src/memory
+(TypeScript; no code copied).
 """
 
 from __future__ import annotations

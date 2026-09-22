@@ -2,6 +2,8 @@
 
 Keeping this separate from ``server.py`` means the logic can be unit tested
 directly and the MCP layer stays a thin, declarative list of endpoints.
+Cosine similarity is a dot product of L2-normalised numpy vectors (standard technique;
+https://numpy.org/doc/stable/reference/generated/numpy.argsort.html for the ranking).
 """
 
 from __future__ import annotations

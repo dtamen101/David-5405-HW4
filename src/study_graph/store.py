@@ -3,6 +3,10 @@
 Every query uses ``?`` placeholders (parameter binding), so note text,
 titles and search strings can never be interpreted as SQL.
 Pattern from the Python docs: https://docs.python.org/3/library/sqlite3.html#sqlite3-placeholders
+``row_factory = sqlite3.Row`` and ``with conn:`` transactions follow the same docs:
+https://docs.python.org/3/library/sqlite3.html#how-to-use-the-connection-context-manager
+Storing numpy vectors as BLOBs uses ``ndarray.tobytes`` / ``np.frombuffer``:
+https://numpy.org/doc/stable/reference/generated/numpy.frombuffer.html
 """
 
 from __future__ import annotations

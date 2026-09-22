@@ -16,8 +16,28 @@ Two protections live here:
    this, FastMCP returns ``str(exception)`` to the client, which can leak
    absolute file paths, SQL, library internals and even API keys.
 
-The token-bucket algorithm follows the classic description at
-https://en.wikipedia.org/wiki/Token_bucket (no code copied).
+Sources (patterns adapted, not copied verbatim):
+- Why: the MCP spec says servers MUST validate inputs and rate limit tool invocations
+  ("Security Considerations"): https://modelcontextprotocol.io/specification/2025-06-18/server/tools
+- Generic message to the client, details logged server-side: OWASP Error Handling Cheat Sheet
+  https://cheatsheetseries.owasp.org/cheatsheets/Error_Handling_Cheat_Sheet.html
+- Token-bucket algorithm: https://en.wikipedia.org/wiki/Token_bucket (concept only)
+- Sliding-window counter with a deque: common rate-limiting pattern, see
+  https://en.wikipedia.org/wiki/Rate_limiting#Algorithms (concept only)
+- ``logging.Filter`` that rewrites records + ``RotatingFileHandler``: Python Logging Cookbook
+  https://docs.python.org/3/howto/logging-cookbook.html#using-filters-to-impart-contextual-information
+  and https://docs.python.org/3/library/logging.handlers.html#rotatingfilehandler
+- Log to stderr, never stdout, in stdio MCP servers: MCP docs "Build an MCP server"
+  https://modelcontextprotocol.io/docs/develop/build-server#logging-in-mcp-servers
+- ``functools.wraps`` keeps the signature via ``__wrapped__``:
+  https://docs.python.org/3/library/functools.html#functools.wraps
+- ``anyio.to_thread.run_sync`` for blocking calls: https://anyio.readthedocs.io/en/stable/threads.html
+- ``SafeFastMCP`` overrides ``FastMCP.call_tool`` / ``FastMCP.read_resource``. Written after reading the
+  MCP Python SDK v1.27.0 source (``mcp/server/fastmcp/server.py`` and ``mcp/server/fastmcp/tools/base.py``,
+  https://github.com/modelcontextprotocol/python-sdk/tree/v1.27.0/src/mcp/server/fastmcp), which shows
+  where argument validation errors are raised and wrapped in ``ToolError``.
+- ``ValidationError.errors()`` fields (``loc``, ``type``, ``ctx``): pydantic docs
+  https://docs.pydantic.dev/latest/errors/validation_errors/
 """
 
 from __future__ import annotations

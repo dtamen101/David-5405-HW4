@@ -193,18 +193,60 @@ study-graph-mcp/
 
 ## Code citations
 
-Code adapted from other sources is also cited in comments at the point of use.
+**How this code was written:** the code was generated with an AI assistant (Claude) and then reviewed,
+tested and modified by me. No file was copied verbatim from another project. The rows below list every
+place where the code *follows* a pattern, API usage or algorithm from somewhere else. Each one is also cited
+in a comment in that file. "Concept only" means the idea came from the source but the code was written for
+this project.
 
-| Where | Source |
-|---|---|
-| `server.py` FastMCP server, `@mcp.tool/resource/prompt`, `mcp.run()` | MCP Python SDK README, Quickstart: https://github.com/modelcontextprotocol/python-sdk#quickstart |
-| `exploits/client.py` stdio `ClientSession` | MCP Python SDK README, Writing MCP Clients: https://github.com/modelcontextprotocol/python-sdk#writing-mcp-clients |
-| `tests/test_server.py` in-memory client | `mcp.shared.memory.create_connected_server_and_client_session` from the SDK's own test suite |
-| `embeddings.py` Gemini REST request format and task prefixes | https://ai.google.dev/gemini-api/docs/embeddings |
-| `extract.py` python-pptx slide/notes iteration | https://python-pptx.readthedocs.io/en/latest/user/quickstart.html |
-| `extract.py` pypdf text extraction | https://pypdf.readthedocs.io/en/stable/user/extract-text.html |
-| `store.py` sqlite3 placeholders | https://docs.python.org/3/library/sqlite3.html#sqlite3-placeholders |
-| `security.py` token-bucket algorithm (concept only) | https://en.wikipedia.org/wiki/Token_bucket |
-| Design reference only (no code copied): knowledge-graph idea | `memory` server in https://github.com/modelcontextprotocol/servers |
+### MCP
 
-Built with the help of an AI assistant (Claude); all code was reviewed and tested by the author.
+| Where | What was used | Source |
+|---|---|---|
+| `server.py` | `FastMCP(...)`, `@mcp.tool()`, `@mcp.resource()`, `@mcp.prompt()`, `mcp.run()` | MCP Python SDK v1.27.0 README, Quickstart: https://github.com/modelcontextprotocol/python-sdk/blob/v1.27.0/README.md#quickstart |
+| `server.py` | Resource templates (`notes://note/{note_id}`) and prompts | SDK "Building Servers" guide: https://github.com/modelcontextprotocol/python-sdk/blob/v1.27.0/docs/server.md |
+| `server.py` | `ToolAnnotations` (readOnlyHint, destructiveHint, ...) | MCP spec schema: https://modelcontextprotocol.io/specification/2025-06-18/schema#toolannotations |
+| `security.py` `SafeFastMCP` | Overrides `FastMCP.call_tool` / `read_resource`, written after reading the SDK source to see where argument errors are raised | https://github.com/modelcontextprotocol/python-sdk/tree/v1.27.0/src/mcp/server/fastmcp |
+| `security.py` | Log to stderr/file, never stdout, in a stdio server | MCP docs, "Logging in MCP Servers": https://modelcontextprotocol.io/docs/develop/build-server |
+| `security.py` | Why both best practices: servers MUST validate inputs and rate limit tool invocations | MCP spec, Tools, Security Considerations: https://modelcontextprotocol.io/specification/2025-06-18/server/tools |
+| `exploits/client.py` | `StdioServerParameters` + `stdio_client` + `ClientSession` | SDK "Writing MCP Clients": https://github.com/modelcontextprotocol/python-sdk/blob/v1.27.0/docs/client.md |
+| `exploits/demo_server.py` | The "naive" server is deliberately written like the quickstart | https://github.com/modelcontextprotocol/python-sdk/blob/v1.27.0/README.md#quickstart |
+| `tests/test_server.py` | In-memory client `create_connected_server_and_client_session` | SDK source: https://github.com/modelcontextprotocol/python-sdk/blob/v1.27.0/src/mcp/shared/memory.py |
+| `claude_desktop_config.json` | `mcpServers` / `command` / `args` / `env` format | MCP docs, "Connect to local MCP servers": https://modelcontextprotocol.io/docs/develop/connect-local-servers |
+| `graph.py` (concept only) | Knowledge graph exposed over MCP | Reference `memory` server: https://github.com/modelcontextprotocol/servers/tree/main/src/memory |
+
+### Libraries and algorithms
+
+| Where | What was used | Source |
+|---|---|---|
+| `config.py` | `dotenv_values` (reads .env without touching environment variables) | python-dotenv README, "Other Use Cases": https://github.com/theskumar/python-dotenv#other-use-cases |
+| `embeddings.py` | Gemini `batchEmbedContents` request/response and the `task: search result \| query:` / `title: ... \| text:` prefixes (quoted from the docs) | https://ai.google.dev/gemini-api/docs/embeddings |
+| `embeddings.py` | `httpx.Client`, `raise_for_status` | https://www.python-httpx.org/quickstart/ |
+| `embeddings.py` (concept only) | Hashing trick for the offline embedder | Weinberger et al., ICML 2009; https://en.wikipedia.org/wiki/Feature_hashing |
+| `extract.py` | python-pptx slide / speaker-notes iteration | https://python-pptx.readthedocs.io/en/latest/user/quickstart.html |
+| `extract.py` | pypdf `PdfReader(...).pages[i].extract_text()` | https://pypdf.readthedocs.io/en/stable/user/extract-text.html |
+| `extract.py` | Path-traversal defence (`resolve()` + `is_relative_to`) | OWASP: https://owasp.org/www-community/attacks/Path_Traversal |
+| `store.py` | `?` placeholders, `row_factory`, `with conn:` transactions | https://docs.python.org/3/library/sqlite3.html |
+| `store.py` | Vectors stored as BLOBs (`tobytes` / `np.frombuffer`) | https://numpy.org/doc/stable/reference/generated/numpy.frombuffer.html |
+| `security.py` (concept only) | Token-bucket and sliding-window rate limiting | https://en.wikipedia.org/wiki/Token_bucket, https://en.wikipedia.org/wiki/Rate_limiting |
+| `security.py` | Redacting `logging.Filter`, `RotatingFileHandler` | Python Logging Cookbook: https://docs.python.org/3/howto/logging-cookbook.html |
+| `security.py` | `anyio.to_thread.run_sync`, `functools.wraps` | https://anyio.readthedocs.io/en/stable/threads.html, https://docs.python.org/3/library/functools.html#functools.wraps |
+| `security.py` | Reading pydantic `ValidationError.errors()` | https://docs.pydantic.dev/latest/errors/validation_errors/ |
+| `security.py`, `exploits/demo_error_disclosure.py` (concept only) | Generic message to the client, details logged on the server | OWASP Error Handling Cheat Sheet: https://cheatsheetseries.owasp.org/cheatsheets/Error_Handling_Cheat_Sheet.html |
+| `graph.py` (concept only) | `[[wikilink]]` syntax | Obsidian: https://obsidian.md/help/links |
+| `tests/conftest.py` | `anyio_backend` fixture / `pytest.mark.anyio` | https://anyio.readthedocs.io/en/stable/testing.html |
+| `tests/test_embeddings.py` | `httpx.MockTransport` | https://www.python-httpx.org/advanced/transports/ |
+| `pyproject.toml` | uv project layout, hatchling `packages = ["src/..."]` | https://docs.astral.sh/uv/concepts/projects/init/, https://hatch.pypa.io/latest/config/build/ |
+
+### Sample course material (`sample_sources/`)
+
+The sample slides and readings were written for this project as demo data. They summarise standard
+course ideas from these sources:
+
+* `reading_theory_of_constraints.pdf`: E. M. Goldratt and J. Cox, *The Goal* (1984). The quote on page 2 is
+  Goldratt's and is attributed in the file.
+* `week2_lean_operations.pptx`: lean concepts (value, muda, value stream mapping, pull, kanban, 5S, kaizen) from
+  J. P. Womack and D. T. Jones, *Lean Thinking* (1996), and T. Ohno, *Toyota Production System* (1988). DOWNTIME
+  is a common lean-training mnemonic, and Little's Law is from J. D. C. Little (1961). The takt-time example numbers are made up.
+* `reading_agile_vs_waterfall.md`: Scrum roles and events from K. Schwaber and J. Sutherland,
+  *The Scrum Guide*, https://scrumguides.org

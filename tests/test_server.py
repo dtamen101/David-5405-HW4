@@ -1,4 +1,9 @@
-"""End-to-end tests through a real in-memory MCP client session."""
+"""End-to-end tests through a real in-memory MCP client session.
+
+``create_connected_server_and_client_session`` is the helper the MCP Python SDK uses in its own
+test suite (``mcp/shared/memory.py``, v1.27.0):
+https://github.com/modelcontextprotocol/python-sdk/blob/v1.27.0/src/mcp/shared/memory.py
+"""
 
 import json
 

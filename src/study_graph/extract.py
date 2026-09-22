@@ -8,6 +8,9 @@ The python-pptx iteration pattern (``slide.shapes`` -> ``shape.has_text_frame``
 docs "Getting Started" guide: https://python-pptx.readthedocs.io/en/latest/user/quickstart.html
 The pypdf ``PdfReader(...).pages[i].extract_text()`` usage follows
 https://pypdf.readthedocs.io/en/stable/user/extract-text.html
+Path-confinement check (resolve, then ``is_relative_to``) follows the OWASP
+Path Traversal guidance https://owasp.org/www-community/attacks/Path_Traversal and
+https://docs.python.org/3/library/pathlib.html#pathlib.PurePath.is_relative_to
 """
 
 from __future__ import annotations

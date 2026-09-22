@@ -1,3 +1,8 @@
+"""Gemini embedder tests with a fake HTTP server.
+
+``httpx.MockTransport`` usage follows https://www.python-httpx.org/advanced/transports/#mock-transports
+"""
+
 import httpx
 import numpy as np
 import pytest

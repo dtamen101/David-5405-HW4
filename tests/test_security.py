@@ -1,3 +1,8 @@
+"""Rate limiter, redaction and safe_endpoint tests.
+
+The injectable fake clock is a standard testing technique (no external code).
+"""
+
 import logging
 
 import pytest

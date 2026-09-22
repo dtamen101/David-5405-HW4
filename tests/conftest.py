@@ -1,3 +1,10 @@
+"""Shared pytest fixtures.
+
+The ``anyio_backend`` fixture is the documented way to run async tests with AnyIO's pytest
+plugin: https://anyio.readthedocs.io/en/stable/testing.html
+``tmp_path`` is pytest's built-in fixture: https://docs.pytest.org/en/stable/how-to/tmp_path.html
+"""
+
 from __future__ import annotations
 
 import shutil

@@ -1,8 +1,14 @@
 """MCP endpoint definitions (the only module that knows about MCP).
 
 Structure based on the FastMCP quickstart in the official MCP Python SDK
-README: https://github.com/modelcontextprotocol/python-sdk#quickstart
+README (v1.27.0, the version this project uses): https://github.com/modelcontextprotocol/python-sdk/blob/v1.27.0/README.md#quickstart
 (``FastMCP(...)``, ``@mcp.tool()``, ``@mcp.resource()``, ``@mcp.prompt()``, ``mcp.run()``).
+Tools, resource templates (``notes://note/{note_id}``) and prompts follow the SDK's
+"Building Servers" guide: https://github.com/modelcontextprotocol/python-sdk/blob/v1.27.0/docs/server.md
+``Annotated[..., Field(description=...)]`` parameter descriptions use pydantic ``Field``:
+https://docs.pydantic.dev/latest/concepts/fields/
+``ToolAnnotations`` (readOnlyHint, destructiveHint, ...) are defined in the MCP specification:
+https://modelcontextprotocol.io/specification/2025-06-18/schema#toolannotations
 """
 
 from __future__ import annotations

@@ -11,6 +11,10 @@ Two interchangeable backends:
 * ``LocalEmbedder`` - a dependency-free fallback (hashed bag of words +
   bigrams, the "hashing trick"). Lexical rather than truly semantic, but it
   lets the server work offline and in tests with no API key.
+  The hashing trick is from Weinberger et al., "Feature Hashing for Large Scale
+  Multitask Learning" (ICML 2009); see https://en.wikipedia.org/wiki/Feature_hashing
+  (algorithm only, implementation written for this project).
+- ``httpx.Client`` / ``raise_for_status`` usage: https://www.python-httpx.org/quickstart/
 """
 
 from __future__ import annotations
@@ -149,7 +153,8 @@ class GeminiEmbedder(Embedder):
         return _normalize(np.asarray(vectors, dtype=np.float32))
 
     def embed_documents(self, docs: list[tuple[str, str]]) -> np.ndarray:
-        # Task-instruction formats recommended for gemini-embedding-2 retrieval.
+        # Task-instruction formats quoted from the Gemini docs for gemini-embedding-2 retrieval:
+        # https://ai.google.dev/gemini-api/docs/embeddings
         texts = [f"title: {title or 'none'} | text: {text}" for title, text in docs]
         parts = [self._request(texts[i:i + GEMINI_BATCH_SIZE]) for i in range(0, len(texts), GEMINI_BATCH_SIZE)]
         return np.vstack(parts) if parts else np.zeros((0, self._dim), dtype=np.float32)

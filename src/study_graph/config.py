@@ -5,6 +5,12 @@ Secrets live in a ``.env`` file at the project root. We read it with
 so the API key is never copied into the process-wide environment
 variables, where child processes and crash reporters could see it.
 All filesystem locations are built with ``pathlib.Path``.
+
+Sources:
+- ``dotenv_values`` usage: python-dotenv README, "Other use cases"
+  https://github.com/theskumar/python-dotenv#other-use-cases
+- ``Path(__file__).resolve().parents[...]``: pathlib docs
+  https://docs.python.org/3/library/pathlib.html#pathlib.PurePath.parents
 """
 
 from __future__ import annotations

@@ -1,3 +1,5 @@
+# Layout follows the uv project guide: https://docs.astral.sh/uv/concepts/projects/init/
+# and the hatchling src-layout docs: https://hatch.pypa.io/latest/config/build/
 [project]
 name = "study-graph-mcp"
 version = "0.1.0"
