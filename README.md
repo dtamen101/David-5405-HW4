@@ -84,7 +84,7 @@ pytest -q
    tools (slider) icon. Server logs: `logs\server.log` in this project, and Claude's own logs in `%APPDATA%\Claude\logs\mcp-server-study-graph.log`.
 
 Try:
-* "What files can you ingest?" (reads `notes://sources`)
+* "What files can studygraph ingest?" (reads `notes://sources`)
 * "Ingest week2_lean_operations.pptx and reading_theory_of_constraints.pdf for course ENMGT 5900."
 * "How do I find the bottleneck in a process? Cite my notes."
 * "Explore the graph around the concept 'bottleneck'."
